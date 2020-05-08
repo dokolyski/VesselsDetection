@@ -13,9 +13,6 @@ from os import listdir
 
 from ml import accuracy, sensitivity, specificity
 
-from sklearn.metrics import accuracy_score
-
-
 def RMSE(matrix1, matrix2):
     sum = 0
 
@@ -61,14 +58,7 @@ def binarize(image, threshold):
 
 def preprocess(image):
     next = image
-    # next = image ** 2
-    # showComparison(image, next)
-    # image = next
 
-    # next = equalize_hist(image)
-    # showComparison(image, next)
-    # image = next
-    #
     next = equalize_adapthist(image)
     # showComparison(image, next)
     image = next
@@ -115,7 +105,9 @@ def resize_and_normalize(image, binary=False):
     if result_image.shape[1] > max_width:
         result_image = resize(result_image, (int(result_image.shape[0] * max_width / result_image.shape[1]), max_width), anti_aliasing=True)
 
-    result_image /= np.max(result_image)    # TODO - czy to pomocne?
+    maxValue = np.max(image)
+    if maxValue > 1:
+        result_image = result_image / 255.0
 
     if binary:
         return binarize(result_image, 0.3)
