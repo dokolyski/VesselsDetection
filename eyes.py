@@ -1,13 +1,20 @@
+from skimage import img_as_uint
+from skimage.color import rgb2gray
 from skimage.exposure import equalize_adapthist, equalize_hist
-from skimage.io import imread, imshow, show
+from skimage.io import imread, imshow, show, imsave
 from skimage.filters import meijering, sato, frangi, hessian, gaussian, unsharp_mask
 from skimage.feature import canny
 import skimage
 import matplotlib.pyplot as plt
 import numpy as np
+from skimage.transform import rescale, resize
+from os import listdir
+
+
 from ml import accuracy, sensitivity, specificity
 
 from sklearn.metrics import accuracy_score
+
 
 def RMSE(matrix1, matrix2):
     sum = 0
@@ -17,6 +24,7 @@ def RMSE(matrix1, matrix2):
             sum += (matrix1[y][x] - matrix2[y][x]) ** 2
 
     return sum ** 0.5
+
 
 def normalize(image):
     out = image.astype(float)
@@ -31,6 +39,7 @@ def normalize(image):
                 out[row][col] = float(out[row][col]) / 255.0
     return out
 
+
 def showComparison(image1, image2):
     plt.subplot(121)
     imshow(image1, cmap=plt.cm.gray, vmin=0, vmax=1)
@@ -39,16 +48,16 @@ def showComparison(image1, image2):
 
     show()
 
-def binarize(image):
-    out = image.copy()
 
-    threshold = np.percentile(image, 80)
+def binarize(image, threshold):
+    out = image.copy()
 
     for row in range(out.shape[0]):
         for col in range(out.shape[1]):
             out[row][col] = 1 if out[row][col] > threshold else 0
 
     return out
+
 
 def preprocess(image):
     next = image
@@ -61,7 +70,7 @@ def preprocess(image):
     # image = next
     #
     next = equalize_adapthist(image)
-    #showComparison(image, next)
+    # showComparison(image, next)
     image = next
 
     # next = gaussian(image, sigma=2)
@@ -74,6 +83,7 @@ def preprocess(image):
 
     return image
 
+
 def process(image):
     # next = meijering(image, sigmas=[1])
     # #showComparison(image, next)
@@ -85,10 +95,10 @@ def process(image):
 
     next = frangi(image, sigmas=[1])
     next /= np.max(next)
-    #showComparison(image, next)
+    # showComparison(image, next)
     image = next
 
-    next = binarize(image) #0.003
+    next = binarize(image, np.percentile(image, 80)) #0.003
     # showComparison(image, next)
     image = next
 
@@ -98,23 +108,50 @@ def process(image):
 
     return image
 
-def routine(number):
-    image = normalize(imread("eyes/healthy/" + number + ".jpg", as_gray=True))
-    manual = normalize(imread("eyes/healthy_manual/" + number + ".jpg", as_gray=True))
 
+def resize_and_normalize(image, binary=False):
+    max_width = 1000
+    result_image = image
+    if result_image.shape[1] > max_width:
+        result_image = resize(result_image, (int(result_image.shape[0] * max_width / result_image.shape[1]), max_width), anti_aliasing=True)
+
+    result_image /= np.max(result_image)    # TODO - czy to pomocne?
+
+    if binary:
+        return binarize(result_image, 0.3)
+    else:
+        return result_image
+
+
+def processSimple(image, manual):
+    # to gray scale
+    image = rgb2gray(image)
+
+    # process
     image = preprocess(image)
     image = process(image)
 
-    manual = binarize(manual) #0.1
+    # results
     print(RMSE(manual, image))
     print(accuracy(manual, image))
     showComparison(manual, image)
 
+
 def main():
-    for i in range(1,15 + 1):
-        number = str(i)
-        while len(number) < 3:
-            number = "0" + number
-        routine(number)
+    # read all filenames in images directory
+    images_directory = 'images/input'
+    manual_directory = 'images/manual'
+    images_filenames = listdir(images_directory)
+    manual_filenames = listdir(manual_directory)
+    images_filenames.sort()
+    manual_filenames.sort()
+
+    # iterate by files
+    for i, m in zip(images_filenames, manual_filenames):
+        image = resize_and_normalize((imread(images_directory + '/' + i)))
+        manual = resize_and_normalize(imread(manual_directory + '/' + m, as_gray=True), True)
+        processSimple(image, manual)
+
+
 if __name__ == "__main__":
     main()
