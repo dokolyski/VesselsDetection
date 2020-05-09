@@ -1,10 +1,15 @@
-def accuracy(original, predicted):
+def accuracy(original, predicted, importanceMask = []):
     TRUE = 0
+    size = 0
     for y in range(original.shape[0]):
         for x in range(original.shape[1]):
-            TRUE += 1 if original[y][x] == predicted[y][x] else 0
+            multiplier = 1
+            if importanceMask != []:
+                multiplier = importanceMask[y][x]
+            TRUE += 1 * multiplier if original[y][x] == predicted[y][x] else 0
+            size += multiplier
 
-    return TRUE / (original.shape[0] * original.shape[1])
+    return TRUE / size
 
 def sensitivity(original, predicted):
     TP = 0
