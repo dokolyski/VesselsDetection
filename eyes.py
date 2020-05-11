@@ -47,9 +47,11 @@ def showComparison(image1, image2):
     imshow(image1, cmap=plt.cm.gray, vmin=0, vmax=1)
     plt.subplot(122)
     imshow(image2, cmap=plt.cm.gray, vmin=0, vmax=1)
-
     show()
 
+def showImage(image):
+    imshow(image, cmap=plt.cm.gray, vmin=0, vmax=1)
+    show(image)
 
 def binarize(image, threshold=-1):
     out = image.copy()
@@ -89,7 +91,7 @@ def preprocess(image):
     next = image
 
     next = equalize_adapthist(image)
-    # showComparison(image, next)
+    #showComparison(image, next)
     image = next
 
     return image
@@ -99,11 +101,11 @@ def process(image):
     next = frangi(image, sigmas=[1])
     next /= np.max(next)
     next **= 0.1
-    # showComparison(image, next)
+    # #showComparison(image, next)
     image = next
 
     next = binarize(image, np.percentile(image, 80)) #0.003
-    # showComparison(image, next)
+    # #showComparison(image, next)
     image = next
 
     return image
@@ -116,7 +118,7 @@ def resize_and_normalize(image, binary=False):
     if result_image.shape[1] > max_width:
         result_image = resize(result_image, (int(result_image.shape[0] * max_width / result_image.shape[1]), max_width), anti_aliasing=True)
 
-    maxValue = np.max(image)
+    maxValue = np.max(result_image)
     if maxValue > 1:
         result_image = result_image / 255.0
 
@@ -128,26 +130,31 @@ def resize_and_normalize(image, binary=False):
 
 def processSimple(image, manual):
     # to gray scale
-    image = rgb2gray(image)
-
+    next = image
+    next = rgb2gray(image)
+    #showComparison(image, next)
+    image = next
     # process
     importanceMask = getImportanceMask(image)
     erodedImportanceMask = binary_erosion(importanceMask, selem=disk(2))
+    #showComparison(importanceMask, erodedImportanceMask)
     image = preprocess(image)
-    image = process(image) * erodedImportanceMask
+    processedImage = process(image)
+    image = processedImage * erodedImportanceMask
+    #showComparison(processedImage, image)
 
-    denoisedImage = image
 
     denoisedImage = skimage.morphology.remove_small_objects(image > 0)
 
-    showComparison(manual, denoisedImage)
+    #showComparison(image, denoisedImage)
 
-    #importanceMask = binary_erosion(importanceMask)
     #print(RMSE(manual, image))
-    print('IMAGE: ' + str(accuracy(manual, image)))
-    print('WITH MASK: ' + str(accuracy(manual, image, importanceMask)))
-    print('DENOISED: ' + str(accuracy(manual, denoisedImage, importanceMask)))
+    print('ACCURACY: ' + str(accuracy(manual, denoisedImage, importanceMask)))
+    print('SENSITIVITY: ' + str(sensitivity(manual, denoisedImage, importanceMask)))
+    print('SPECIFICITY: ' + str(specificity(manual, denoisedImage, importanceMask)))
     print('\n')
+
+    # showComparison(manual, denoisedImage)
 
     return denoisedImage
 
@@ -171,11 +178,14 @@ def main():
     # iterate by files
     for i, m in zip(images_filenames, manual_filenames):
         image = resize_and_normalize((imread(images_directory + '/' + i)))
-        manual = resize_and_normalize(imread(manual_directory + '/' + m, as_gray=True), True)
+        # image = imread(images_directory + '/' + i)
+        rawManual = imread(manual_directory + '/' + m, as_gray=True)
+        manual = resize_and_normalize(rawManual, True)
+        # showComparison(rawManual, manual)
 
         vessels = processSimple(image, manual)
         colorized = colorizeVessels(image, vessels)
-        showComparison(image, colorized)
+        # showComparison(image, colorized)
 
 if __name__ == "__main__":
     main()
