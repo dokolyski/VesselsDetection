@@ -13,7 +13,7 @@ from os import listdir
 from skimage.restoration import denoise_nl_means, estimate_sigma
 
 from skimage.filters import  threshold_local
-
+from sklearn.metrics import confusion_matrix
 
 from ml import accuracy, sensitivity, specificity
 
@@ -51,7 +51,11 @@ def showComparison(image1, image2):
 
 def showImage(image):
     imshow(image, cmap=plt.cm.gray, vmin=0, vmax=1)
-    show(image)
+    show()
+
+def printConfusionMatrix(original, predicted):
+    matrix = confusion_matrix(original.ravel(), predicted.ravel())
+    print(matrix)
 
 def binarize(image, threshold=-1):
     out = image.copy()
@@ -154,7 +158,7 @@ def processSimple(image, manual):
     print('SPECIFICITY: ' + str(specificity(manual, denoisedImage, importanceMask)))
     print('\n')
 
-    # showComparison(manual, denoisedImage)
+    showComparison(manual, denoisedImage)
 
     return denoisedImage
 
@@ -185,7 +189,8 @@ def main():
 
         vessels = processSimple(image, manual)
         colorized = colorizeVessels(image, vessels)
-        # showComparison(image, colorized)
+        showComparison(image, colorized)
+        printConfusionMatrix(manual, vessels)
 
 if __name__ == "__main__":
     main()
